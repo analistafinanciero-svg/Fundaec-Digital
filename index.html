@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundaec Digital Contable | Sistema de Gestión Documental</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="Fundaec Digital"
+                    style="width: 100%; border-radius: 12px; margin-bottom: 0.5rem;">
+                <div style="font-size: 0.9rem; font-weight: 700; text-align: center; color: white;">Fundaec Digital
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-label">General</span>
+                <div class="nav-item active" data-view="dashboard">🏠 Inicio</div>
+                <div class="nav-item" data-view="explorer">📁 Mi Archivo</div>
+                <div class="nav-item" data-view="audit">📋 Auditoría</div>
+                <div class="nav-item" data-view="reports">📊 Reportes</div>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-label">Configuración</span>
+                <div class="nav-item" data-view="config">⚙️ Estructura</div>
+                <div class="nav-item" data-view="users">👥 Usuarios</div>
+            </div>
+
+            <div class="sidebar-bottom">
+                <div class="storage-card">
+                    <p>Espacio Utilizado</p>
+                    <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 0.5rem 0;">
+                        <div id="storage-progress"
+                            style="width: 45%; height: 100%; background: #4f46e5; border-radius: 3px;"></div>
+                    </div>
+                    <p style="font-size: 0.7rem; color: #a5b4fc;"><span id="storage-val">0</span> de 100 GB</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main>
+            <header>
+                <div class="search-bar">
+                    <span>🔍</span>
+                    <input type="text" placeholder="Buscar cualquier documento...">
+                </div>
+                <div class="header-tools">
+                    <span style="font-size: 1.2rem; cursor: pointer;">🔍</span>
+                    <div style="position:relative; display: inline-flex;">
+                        <span id="bell-icon" style="font-size: 1.2rem; cursor: pointer;">🔔</span>
+                        <div id="notification-dot"></div>
+                        <div id="notification-panel" class="notification-panel">
+                            <h4 style="margin-bottom:0.5rem; border-bottom:1px solid #eee; padding-bottom:0.5rem;">
+                                Notificaciones</h4>
+                            <div id="notification-list" style="max-height: 200px; overflow-y: auto;">
+                                <p style="font-size:0.7rem; color:#94a3b8; text-align:center; padding:1rem;">No tienes
+                                    notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                        style="width: 32px; height: 32px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">
+                        AD</div>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-container active">
+                <h2 class="section-title">Mi Almacenamiento</h2>
+                <div class="storage-grid" id="storage-tile-grid"></div>
+
+                <h2 class="section-title">Archivos Recientes</h2>
+                <div class="recent-grid" id="recent-files-grid"></div>
+            </div>
+
+            <!-- Explorer View -->
+            <div id="view-explorer" class="view-container">
+                <h2 class="section-title">Explorador de Archivos</h2>
+                <div class="recent-grid" id="explorer-grid"></div>
+            </div>
+
+            <!-- Config View -->
+            <div id="view-config" class="view-container">
+                <h2 class="section-title">Estructura del Archivo</h2>
+                <div class="recent-grid">
+                    <div class="storage-box" style="grid-column: span 1.5;">
+                        <h3>Categorías</h3>
+                        <div id="cat-list" style="margin-top: 1rem;"></div>
+                        <input type="text" id="new-cat-name" placeholder="Nueva Categoría"
+                            style="width:100%; margin-top:1rem; padding:0.5rem; border:1px solid #ddd; border-radius:8px;">
+                        <button class="btn-fab" id="btn-add-cat"
+                            style="position:static; margin-top:0.5rem; width:100%;">+ Añadir</button>
+                    </div>
+                    <div class="storage-box" style="grid-column: span 1.5;">
+                        <h3>Tipos por Categoría</h3>
+                        <select id="config-select-cat" style="width:100%; margin:1rem 0; padding:0.5rem;"></select>
+                        <div id="type-list"></div>
+                        <input type="text" id="new-type-name" placeholder="Nuevo Tipo"
+                            style="width:100%; margin-top:1rem; padding:0.5rem; border:1px solid #ddd; border-radius:8px;">
+                        <button class="btn-fab" id="btn-add-type"
+                            style="position:static; margin-top:0.5rem; width:100%;">+ Añadir Tipo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit View -->
+            <div id="view-audit" class="view-container">
+                <h2 class="section-title">Historial de Auditoría</h2>
+                <div class="storage-box">
+                    <button class="btn-fab" id="btn-export-audit"
+                        style="position:static; margin-bottom:1rem; background:var(--success);">Exportar CSV</button>
+                    <table style="width:100%; border-collapse: collapse;">
+                        <tbody id="audit-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div id="view-reports" class="view-container">
+                <h2 class="section-title">Reportes y Exportación</h2>
+                <div class="storage-box">
+                    <p style="margin-bottom: 1.5rem; color: var(--text-body);">Genera un reporte detallado en Excel.</p>
+                    <div style="display:flex; gap: 1rem; align-items:center;">
+                        <input type="month" id="report-month-filter" value="2026-03">
+                        <button class="btn-fab" id="btn-export-excel"
+                            style="position:static; background:var(--success);">💾 Exportar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users View -->
+            <div id="view-users" class="view-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 class="section-title" style="margin:0;">Gestión de Usuarios</h2>
+                    <button class="btn-fab" style="position:static;"
+                        onclick="document.getElementById('user-modal').style.display='flex'">+ Nuevo Usuario</button>
+                </div>
+
+                <div class="storage-box">
+                    <table style="width:100%; border-collapse: collapse;">
+                        <thead style="text-align:left; border-bottom:2px solid #f1f5f9;">
+                            <tr>
+                                <th style="padding:1rem;">Usuario</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="btn-fab" onclick="document.getElementById('upload-modal').style.display='flex'">+ Add new</div>
+        </main>
+
+        <aside class="right-panel">
+            <h3 style="margin-bottom: 2rem;">Almacenamiento</h3>
+            <div class="chart-container">
+                <div class="chart-center">
+                    <span style="font-size: 0.8rem; color: #64748b;">Total</span>
+                    <span id="total-docs-count" style="font-size: 1.2rem; font-weight: 700;">0</span>
+                    <span style="font-size: 0.7rem; color: #64748b;">docs</span>
+                </div>
+            </div>
+            <h4 style="margin-bottom: 1rem;">Resumen</h4>
+            <div id="legend-list"></div>
+        </aside>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="modal-overlay">
+        <div class="storage-box" style="width: 500px; padding: 2rem;">
+            <h3>Archivar Nuevo Documento</h3>
+            <form id="doc-upload-form" style="margin-top: 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label>Categoría</label>
+                    <select id="meta-category" style="width:100%; padding:0.5rem;" required></select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Referencia</label>
+                    <input type="text" id="meta-name" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Consecutivo</label>
+                    <input type="number" id="meta-consecutive" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Tipo</label>
+                    <select id="meta-type" style="width:100%; padding:0.5rem;" required disabled></select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Fecha</label>
+                    <input type="date" id="meta-date" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div id="dropzone" style="border:2px dashed #ddd; padding:2rem; text-align:center; cursor:pointer;">
+                    <p id="file-count-label">Seleccionar PDFs</p>
+                    <input type="file" id="file-input" multiple accept=".pdf" style="display:none;">
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+                    <button type="button" class="btn-fab" style="position:static; background:#6b7280; flex:1;"
+                        onclick="document.getElementById('upload-modal').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn-fab" style="position:static; flex:1;">Archivar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="user-modal" class="modal-overlay">
+        <div class="storage-box" style="width: 400px; padding: 2rem;">
+            <h3>Nuevo Usuario</h3>
+            <form id="user-form" style="margin-top: 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="user-name" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Rol</label>
+                    <select id="user-role" style="width:100%; padding:0.5rem;" required>
+                        <option value="Administrador">Administrador</option>
+                        <option value="Contador">Contador</option>
+                        <option value="Visualizador">Visualizador</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+                    <button type="button" class="btn-fab" style="position:static; background:#6b7280; flex:1;"
+                        onclick="document.getElementById('user-modal').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn-fab" style="position:static; flex:1;">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loader Overlay -->
+    <div id="loader-overlay" class="loader-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <h3 style="color: var(--primary);">Archivando Documentos...</h3>
+        <div class="progress-bar-container">
+            <div id="upload-progress"></div>
+        </div>
+        <p id="loader-text">Cargando archivos (0%)</p>
+    </div>
+
+    <!-- PDF Modal -->
+    <div id="pdf-modal" class="modal-overlay">
+        <div class="storage-box" style="width: 90%; height: 90vh; padding: 0;">
+            <div style="padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                <h3 id="preview-title">Documento</h3>
+                <span style="cursor:pointer; font-size: 1.5rem;" onclick="app.closePreview()">&times;</span>
+            </div>
+            <iframe id="pdf-preview-frame" style="width:100%; height:calc(100% - 60px); border:none;"></iframe>
+        </div>
+    </div>
+
+    <!-- Move/Copy Modal -->
+    <div id="move-modal" class="modal-overlay">
+        <div class="storage-box" style="width: 400px; padding: 2rem;">
+            <h3 id="move-title">Mover/Copiar Archivo</h3>
+            <div style="margin-top: 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label>Nuevo Año (Ej: 2025)</label>
+                    <input type="number" id="move-year" style="width:100%; padding:0.5rem;" placeholder="2026">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Nuevo Mes</label>
+                    <select id="move-month" style="width:100%; padding:0.5rem;">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Categoría de Destino</label>
+                    <select id="move-category" style="width:100%; padding:0.5rem;"></select>
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:2rem;">
+                    <button type="button" class="btn-fab" style="position:static; flex:1; background:#818cf8;"
+                        onclick="app.executeMoveCopy('copy')">Copiar</button>
+                    <button type="button" class="btn-fab" style="position:static; flex:1;"
+                        onclick="app.executeMoveCopy('move')">Mover</button>
+                </div>
+                <button type="button" class="btn-fab"
+                    style="position:static; width:100%; margin-top:0.5rem; background:#6b7280;"
+                    onclick="document.getElementById('move-modal').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

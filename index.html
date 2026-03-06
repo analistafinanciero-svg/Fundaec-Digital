@@ -7,10 +7,47 @@
     <title>Fundaec Digital Contable | Sistema de Gestión Documental</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
-    <div class="app-container">
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-overlay">
+        <div class="login-card">
+            <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 3rem;">
+                <img src="logo.jpg" alt="Fundaec Digital" style="width: 40px; border-radius: 8px;">
+                <div style="text-align: left; margin-left: 10px;">
+                    <div style="font-size: 1rem; font-weight: 700; color: #1e293b;">FUNDAC DIGITAL</div>
+                    <div style="font-size: 0.7rem; color: #64748b;">Contable</div>
+                </div>
+            </div>
+
+            <h2>Iniciar Sesión</h2>
+
+            <div class="login-form-container">
+                <form id="login-form">
+                    <div class="login-input-group">
+                        <span class="icon">👤</span>
+                        <input type="text" id="username" placeholder="Usuario" required>
+                    </div>
+                    <div class="login-input-group">
+                        <span class="icon">👤</span>
+                        <input type="password" id="password" placeholder="Contarsenaaa" required>
+                        <span class="lock-icon">🔒</span>
+                    </div>
+                    <button type="submit" class="btn-login">Entrar</button>
+                    <div id="login-error">Usuario o contraseña incorrectos</div>
+                </form>
+
+                <div class="login-links">
+                    <a href="#" class="forgot-password">¿Olvidó su porsnneers?</a>
+                    <a href="#" class="create-account">Crear counta</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="main-app" style="display: none;">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
@@ -32,6 +69,9 @@
                 <span class="nav-label">Configuración</span>
                 <div class="nav-item" data-view="config">⚙️ Estructura</div>
                 <div class="nav-item" data-view="users">👥 Usuarios</div>
+                <div class="nav-item" id="btn-logout"
+                    style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">🔓
+                    Cerrar Sesión</div>
             </div>
 
             <div class="sidebar-bottom">
@@ -51,7 +91,8 @@
             <header>
                 <div class="search-bar">
                     <span>🔍</span>
-                    <input type="text" placeholder="Buscar cualquier documento...">
+                    <input type="text" id="global-search" placeholder="Buscar por nombre, consecutivo o categoría...">
+                    <span id="clear-search" style="cursor:pointer; padding: 0 10px; display:none;">&times;</span>
                 </div>
                 <div class="header-tools">
                     <span style="font-size: 1.2rem; cursor: pointer;">🔍</span>
@@ -75,6 +116,20 @@
 
             <!-- Dashboard View -->
             <div id="view-dashboard" class="view-container active">
+                <div class="search-section storage-box"
+                    style="margin-bottom: 2rem; padding: 2rem; background: linear-gradient(135deg, var(--primary), #818cf8); color: white;">
+                    <h2 style="margin-bottom: 1rem; color: white;">¿Qué documento buscas hoy?</h2>
+                    <div class="search-bar"
+                        style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); width: 100%; max-width: 600px;">
+                        <span style="color: white; padding-left: 15px;">🔍</span>
+                        <input type="text" id="dashboard-search"
+                            placeholder="Buscar por consecutivo, nombre o categoría..."
+                            style="color: white; background: transparent; border: none; width: 100%; padding: 12px;">
+                        <span id="dashboard-clear-search"
+                            style="cursor:pointer; padding: 0 15px; color: white; display:none;">&times;</span>
+                    </div>
+                </div>
+
                 <h2 class="section-title">Mi Almacenamiento</h2>
                 <div class="storage-grid" id="storage-tile-grid"></div>
 
@@ -109,6 +164,27 @@
                         <button class="btn-fab" id="btn-add-type"
                             style="position:static; margin-top:0.5rem; width:100%;">+ Añadir Tipo</button>
                     </div>
+
+                    <!-- Backup & Restore Section -->
+                    <div class="storage-box" id="backup-section"
+                        style="grid-column: 1 / -1; margin-top: 1.5rem; border: 2px dashed #cbd5e1; background: #f8fafc;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="color: var(--primary);">📦 Backup y Restauración Local</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-body); margin-top: 0.5rem;">Resguarda
+                                    toda la base de datos de FUNDAEC en un archivo seguro.</p>
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <button class="btn-fab" id="btn-download-backup"
+                                    style="position:static; background: var(--primary);">⬇️ Descargar Backup</button>
+                                <label class="btn-fab"
+                                    style="position:static; background: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                    ⬆️ Restaurar Backup
+                                    <input type="file" id="input-restore-backup" accept=".json" style="display: none;">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -137,12 +213,43 @@
                 </div>
             </div>
 
+            <!-- Search Results View -->
+            <div id="view-search" class="view-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 class="section-title" style="margin:0;">Resultados de Búsqueda</h2>
+                    <button class="btn-fab" onclick="app.clearSearch()"
+                        style="position:static; background:#6b7280;">Volver</button>
+                </div>
+                <div id="search-results-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                    <!-- Resultados dinámicos aquí -->
+                </div>
+            </div>
+
             <!-- Users View -->
             <div id="view-users" class="view-container">
+                <div class="profile-section storage-box" style="margin-bottom: 2rem;">
+                    <h3>👤 Mi Perfil</h3>
+                    <div style="display: flex; align-items: center; gap: 2rem; margin-top: 1.5rem;">
+                        <div id="my-avatar" class="user-avatar-lg">AD</div>
+                        <div style="flex: 1;">
+                            <div style="margin-bottom: 1rem;">
+                                <label>Nombre para Mostrar</label>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                    <input type="text" id="my-profile-name" style="flex: 1; padding: 0.5rem;"
+                                        placeholder="Tu nombre">
+                                    <button class="btn-fab" style="position: static; padding: 0.5rem 1rem;"
+                                        onclick="app.updateMyProfile()">Guardar</button>
+                                </div>
+                            </div>
+                            <p style="font-size: 0.8rem; color: var(--text-body);">Rol actual: <strong
+                                    id="my-profile-role" style="color: var(--primary);">Administrador</strong></p>
+                        </div>
+                    </div>
+                </div>
+
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h2 class="section-title" style="margin:0;">Gestión de Usuarios</h2>
-                    <button class="btn-fab" style="position:static;"
-                        onclick="document.getElementById('user-modal').style.display='flex'">+ Nuevo Usuario</button>
+                    <h2 class="section-title" style="margin:0;">Administración de Usuarios</h2>
+                    <button class="btn-fab" id="btn-open-user-modal" style="position:static;">+ Nuevo Usuario</button>
                 </div>
 
                 <div class="storage-box">
@@ -217,38 +324,68 @@
 
     <!-- User Modal -->
     <div id="user-modal" class="modal-overlay">
-        <div class="storage-box" style="width: 400px; padding: 2rem;">
-            <h3>Nuevo Usuario</h3>
+        <div class="storage-box" style="width: 450px; padding: 2.5rem;">
+            <h3 id="user-modal-title">Nuevo Usuario</h3>
             <form id="user-form" style="margin-top: 1.5rem;">
-                <div style="margin-bottom: 1rem;">
+                <input type="hidden" id="edit-user-id" value="">
+                <div style="margin-bottom: 1.2rem;">
                     <label>Nombre Completo</label>
-                    <input type="text" id="user-name" style="width:100%; padding:0.5rem;" required>
+                    <input type="text" id="user-name"
+                        style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px;" required>
                 </div>
-                <div style="margin-bottom: 1rem;">
-                    <label>Rol</label>
-                    <select id="user-role" style="width:100%; padding:0.5rem;" required>
-                        <option value="Administrador">Administrador</option>
-                        <option value="Contador">Contador</option>
-                        <option value="Visualizador">Visualizador</option>
+                <div style="margin-bottom: 1.2rem;">
+                    <label>Nombre de Usuario (Login)</label>
+                    <input type="text" id="user-login"
+                        style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px;" required>
+                </div>
+                <div id="password-field-container" style="margin-bottom: 1.2rem;">
+                    <label>Contraseña</label>
+                    <input type="password" id="user-pass"
+                        style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label>Rol de Usuario</label>
+                    <select id="user-role"
+                        style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px;" required>
+                        <option value="Administrador">Administrador (Acceso Total)</option>
+                        <option value="Contador">Contador (Editor)</option>
+                        <option value="Visualizador">Visualizador (Solo Lectura)</option>
                     </select>
                 </div>
-                <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+                <div id="status-field-container" style="margin-bottom: 1.5rem; display: none;">
+                    <label>Estado</label>
+                    <select id="user-status"
+                        style="width:100%; padding:0.6rem; border:1px solid var(--border); border-radius:8px;">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo (Sin Acceso)</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:2rem;">
                     <button type="button" class="btn-fab" style="position:static; background:#6b7280; flex:1;"
                         onclick="document.getElementById('user-modal').style.display='none'">Cancelar</button>
-                    <button type="submit" class="btn-fab" style="position:static; flex:1;">Crear</button>
+                    <button type="submit" id="user-submit-btn" class="btn-fab" style="position:static; flex:1;">Crear
+                        Usuario</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
     <!-- Loader Overlay -->
     <div id="loader-overlay" class="loader-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <h3 style="color: var(--primary);">Archivando Documentos...</h3>
-        <div class="progress-bar-container">
-            <div id="upload-progress"></div>
+        <div class="loader-card">
+            <div class="spinner"></div>
+            <h3 id="loader-title" style="color: var(--primary); margin-bottom: 0.5rem;">Procesando...</h3>
+            <p id="loader-subtitle" style="color: var(--text-body); font-size: 0.9rem; margin-bottom: 1.5rem;">Por
+                favor, espera un momento</p>
+            <div class="progress-bar-container" style="width: 100%;">
+                <div id="upload-progress"></div>
+            </div>
+            <p id="loader-text" style="margin-top: 0.75rem; font-weight: 600; font-size: 0.85rem;">Cargando archivos
+                (0%)</p>
         </div>
-        <p id="loader-text">Cargando archivos (0%)</p>
     </div>
 
     <!-- PDF Modal -->
@@ -268,7 +405,12 @@
             <h3 id="move-title">Mover/Copiar Archivo</h3>
             <div style="margin-top: 1.5rem;">
                 <div style="margin-bottom: 1rem;">
-                    <label>Nuevo Año (Ej: 2025)</label>
+                    <label>Número de Consecutivo (Ej: 001, 2026-01)</label>
+                    <input type="text" id="move-consecutive" style="width:100%; padding:0.5rem;" placeholder="Ej: 001"
+                        required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Nuevo Año (Ej: 2026)</label>
                     <input type="number" id="move-year" style="width:100%; padding:0.5rem;" placeholder="2026">
                 </div>
                 <div style="margin-bottom: 1rem;">

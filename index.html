@@ -51,16 +51,42 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="logo.jpg" alt="Fundaec Digital"
-                    style="width: 100%; border-radius: 12px; margin-bottom: 0.5rem;">
-                <div style="font-size: 0.9rem; font-weight: 700; text-align: center; color: white;">Fundaec Digital
+                <div class="logo-frame">
+                    <svg viewBox="0 0 100 100" class="logo-svg-tech" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="tech-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#affc41;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#00e5ff;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Cloud Outer Shadow/Base -->
+                        <path d="M25,65 Q15,65 15,55 Q15,42 28,40 Q30,22 50,22 Q70,22 72,40 Q85,42 85,55 Q85,65 75,65 Z"
+                            fill="url(#tech-grad)" opacity="0.15" />
+                        <!-- Cloud Outline -->
+                        <path d="M25,65 Q15,65 15,55 Q15,42 28,40 Q30,22 50,22 Q70,22 72,40 Q85,42 85,55 Q85,65 75,65 Z"
+                            fill="none" stroke="url(#tech-grad)" stroke-width="2" />
+
+                        <!-- Gear -->
+                        <g transform="translate(50, 48) scale(0.6)">
+                            <path
+                                d="M10,-30 L-10,-30 L-13,-20 A22,22 0 0,0 -20,-13 L-30,-10 L-30,10 L-20,13 A22,22 0 0,0 -13,20 L-10,30 L10,30 L13,20 A22,22 0 0,0 20,13 L30,10 L30,-10 L20,-13 A22,22 0 0,0 13,-20 Z"
+                                fill="url(#tech-grad)" />
+                            <circle cx="0" cy="0" r="12" fill="#1c1d2d" />
+                            <!-- Leaf detail -->
+                            <path d="M0,-8 C5,-8 8,-3 8,2 C8,7 0,10 0,10 C0,10 -8,7 -8,2 C-8,-3 -5,-8 0,-8 Z"
+                                fill="url(#tech-grad)" />
+                        </g>
+                    </svg>
                 </div>
+                <div class="logo-text">Fundaec Digital</div>
             </div>
 
             <div class="nav-section">
                 <span class="nav-label">General</span>
                 <div class="nav-item active" data-view="dashboard">🏠 Inicio</div>
                 <div class="nav-item" data-view="explorer">📁 Mi Archivo</div>
+                <div class="nav-item" data-view="financials">📊 Estados Financieros</div>
+                <div class="nav-item" data-view="thirdparties">👥 Terceros (RUT)</div>
                 <div class="nav-item" data-view="audit">📋 Auditoría</div>
                 <div class="nav-item" data-view="reports">📊 Reportes</div>
             </div>
@@ -141,6 +167,52 @@
             <div id="view-explorer" class="view-container">
                 <h2 class="section-title">Explorador de Archivos</h2>
                 <div class="recent-grid" id="explorer-grid"></div>
+            </div>
+
+            <!-- Financials View -->
+            <div id="view-financials" class="view-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 class="section-title" style="margin:0;">Estados Financieros (Cierre Anual)</h2>
+                    <button class="btn-fab" id="btn-open-financial-modal" style="position:static;">+ Subir
+                        Cierre</button>
+                </div>
+                <div class="storage-box">
+                    <table style="width:100%; border-collapse: collapse; text-align: left;">
+                        <thead style="background:#f8fafc; border-bottom:2px solid #eee;">
+                            <tr>
+                                <th style="padding:1rem;">Año</th>
+                                <th>Nombre del Documento</th>
+                                <th>Fecha Subida</th>
+                                <th>Usuario</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financials-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Third Parties View -->
+            <div id="view-thirdparties" class="view-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 class="section-title" style="margin:0;">Base de Datos de Terceros (RUT)</h2>
+                    <button class="btn-fab" id="btn-open-thirdparty-modal" style="position:static;">+ Añadir
+                        Tercero</button>
+                </div>
+                <div class="storage-box">
+                    <table style="width:100%; border-collapse: collapse; text-align: left;">
+                        <thead style="background:#f8fafc; border-bottom:2px solid #eee;">
+                            <tr>
+                                <th style="padding:1rem;">NIT / Cédula</th>
+                                <th>Nombre / Razón Social</th>
+                                <th>Tipo</th>
+                                <th>RUT (Documento)</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="thirdparties-table-body"></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Config View -->
@@ -396,6 +468,72 @@
                 <span style="cursor:pointer; font-size: 1.5rem;" onclick="app.closePreview()">&times;</span>
             </div>
             <iframe id="pdf-preview-frame" style="width:100%; height:calc(100% - 60px); border:none;"></iframe>
+        </div>
+    </div>
+
+    <!-- Financial Modal -->
+    <div id="financial-modal" class="modal-overlay">
+        <div class="storage-box" style="width: 450px; padding: 2rem;">
+            <h3>Subir Estado Financiero</h3>
+            <form id="financial-upload-form" style="margin-top: 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label>Año del Cierre</label>
+                    <input type="number" id="fin-year" style="width:100%; padding:0.5rem;" required
+                        placeholder="Ej: 2025">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Nombre del Documento</label>
+                    <input type="text" id="fin-name" style="width:100%; padding:0.5rem;" required
+                        placeholder="Ej: Estado de Situación Financiera">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Archivo PDF</label>
+                    <input type="file" id="fin-file" accept=".pdf" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:2rem;">
+                    <button type="button" class="btn-fab" style="position:static; background:#6b7280; flex:1;"
+                        onclick="document.getElementById('financial-modal').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn-fab" style="position:static; flex:1;">Subir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Third Party Modal -->
+    <div id="thirdparty-modal" class="modal-overlay">
+        <div class="storage-box" style="width: 500px; padding: 2rem;">
+            <h3 id="thirdparty-modal-title">Añadir Tercero</h3>
+            <form id="thirdparty-form" style="margin-top: 1.5rem;">
+                <input type="hidden" id="edit-thirdparty-id" value="">
+                <div style="margin-bottom: 1rem;">
+                    <label>NIT / Cédula</label>
+                    <input type="text" id="tp-nit" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Nombre / Razón Social</label>
+                    <input type="text" id="tp-name" style="width:100%; padding:0.5rem;" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Tipo de Tercero</label>
+                    <select id="tp-type" style="width:100%; padding:0.5rem;" required>
+                        <option value="Cliente">Cliente</option>
+                        <option value="Proveedor">Proveedor</option>
+                        <option value="Empleado">Empleado</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Documento RUT (PDF)</label>
+                    <input type="file" id="tp-file" accept=".pdf" style="width:100%; padding:0.5rem;">
+                    <small id="tp-file-help" style="display:none; color: var(--text-body);">Sube un nuevo archivo si
+                        deseas actualizarlo.</small>
+                </div>
+                <div style="display:flex; gap:1rem; margin-top:2rem;">
+                    <button type="button" class="btn-fab" style="position:static; background:#6b7280; flex:1;"
+                        onclick="document.getElementById('thirdparty-modal').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn-fab" style="position:static; flex:1;">Guardar</button>
+                </div>
+            </form>
         </div>
     </div>
 

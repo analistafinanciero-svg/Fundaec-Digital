@@ -2,8 +2,13 @@ class DocuFlowApp {
     constructor() {
         // Cambiamos la clave para RESETEAR y corregir errores de versiones previas
         this.STORAGE_KEY = 'docuflow_v3_stable';
+        this.THIRD_PARTIES_KEY = 'fundaec_terceros';
         this.explorerState = { year: null, month: null, filterCatId: null };
         this.currentMoveDocId = null;
+
+        // Recuperar terceros desde su propia clave de localStorage
+        const savedTP = localStorage.getItem(this.THIRD_PARTIES_KEY);
+        this.thirdParties = savedTP ? JSON.parse(savedTP) : [];
 
         // Recuperar sesión desde sessionStorage (Seguridad de Sesión)
         const session = sessionStorage.getItem('docuflow_session');
@@ -25,6 +30,7 @@ class DocuFlowApp {
                     if (!this.data.auditLogs) this.data.auditLogs = [];
                     if (!this.data.types) this.data.types = [];
                     if (!this.data.documents) this.data.documents = [];
+                    if (!this.data.financialDocuments) this.data.financialDocuments = [];
                     if (!this.data.users) {
                         this.data.users = [{ id: 1, name: 'Admin Principal', username: 'admin', password: '1234', role: 'Administrador', status: 'Activo' }];
                     } else {
@@ -60,7 +66,8 @@ class DocuFlowApp {
             users: [
                 { id: 1, name: 'Admin Principal', username: 'admin', password: '1234', role: 'Administrador', status: 'Activo' }
             ],
-            auditLogs: []
+            auditLogs: [],
+            financialDocuments: []
         };
         this.saveToLocalStorage();
     }
@@ -85,6 +92,7 @@ class DocuFlowApp {
         this.setupMisc();
         this.setupBackupHandlers();
         this.setupKeyboardShortcuts();
+        this.setupNewModulesHandlers();
 
         // Si hay sesión iniciada, mostrar app
         if (this.currentUser) {
@@ -121,6 +129,8 @@ class DocuFlowApp {
             if (viewId === 'explorer') this.renderExplorer();
             if (viewId === 'dashboard') this.renderDashboard();
             if (viewId === 'users') this.renderUsers();
+            if (viewId === 'financials') this.renderFinancials();
+            if (viewId === 'thirdparties') this.renderThirdParties();
         }
     }
 
@@ -131,6 +141,8 @@ class DocuFlowApp {
         this.updateStats();
         this.renderAuditLogs();
         this.renderUsers();
+        this.renderFinancials();
+        this.renderThirdParties();
     }
 
     renderCategorySelectors() {
@@ -445,19 +457,24 @@ class DocuFlowApp {
                     catName.includes(query);
             });
 
-            this.renderSearchResults(filtered, query);
+            // Buscar también en Terceros
+            const filteredTP = this.thirdParties.filter(tp => {
+                return tp.nit.toLowerCase().includes(query) || tp.name.toLowerCase().includes(query);
+            });
+
+            this.renderSearchResults(filtered, query, filteredTP);
         }, 50);
     }
 
-    renderSearchResults(results, query) {
+    renderSearchResults(results, query, tpResults = []) {
         const grid = document.getElementById('search-results-grid');
         if (!grid) return;
 
-        if (results.length === 0) {
+        if (results.length === 0 && tpResults.length === 0) {
             grid.innerHTML = `
                 <div class="storage-box" style="text-align:center; padding:3rem; opacity:0.6;">
                     <div style="font-size:3rem; margin-bottom:1rem;">🔍</div>
-                    <p>No se encontraron documentos para "<strong>${query}</strong>"</p>
+                    <p>No se encontraron resultados para "<strong>${query}</strong>"</p>
                 </div>`;
             return;
         }
@@ -466,8 +483,43 @@ class DocuFlowApp {
         const isVisualizer = this.currentUser?.role === 'Visualizador';
         const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-        grid.innerHTML = `
+        let html = '';
+
+        if (tpResults.length > 0) {
+            html += `
+                <div class="storage-box" style="padding:1.5rem; border-left: 4px solid #10b981;">
+                    <h3 style="margin-bottom:1rem; color:#10b981;">👥 Terceros Encontrados</h3>
+                    <table class="file-table" style="width:100%; border-collapse:collapse; text-align:left;">
+                        <thead style="background:#f8fafc;">
+                            <tr style="border-bottom:2px solid #eee;">
+                                <th style="padding:0.75rem;">NIT/Cédula</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tpResults.map(tp => `
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:0.75rem;"><strong>${tp.nit}</strong></td>
+                                    <td>${tp.name}</td>
+                                    <td><span class="badge-role" style="background:#eef2ff; color:#4f46e5;">${tp.type}</span></td>
+                                    <td>
+                                        <button onclick="app.openThirdPartyPreview(${tp.id})" title="Ver RUT" class="action-btn">📄</button>
+                                        <button onclick="app.switchView('thirdparties')" title="Ir a Terceros" class="action-btn">🔗</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        if (results.length > 0) {
+            html += `
             <div class="storage-box" style="padding:1.5rem;">
+                <h3 style="margin-bottom:1rem;">📄 Documentos Encontrados</h3>
                 <table class="file-table" style="width:100%; border-collapse:collapse; text-align:left;">
                     <thead style="background:#f8fafc;">
                         <tr style="border-bottom:2px solid #eee;">
@@ -480,11 +532,11 @@ class DocuFlowApp {
                     </thead>
                     <tbody>
                         ${results.map(doc => {
-            const cat = this.data.categories.find(c => c.id == doc.catId);
-            const [year, month] = doc.date.split('-');
-            const location = `${year} > ${months[parseInt(month) - 1]} > ${cat ? cat.name : 'General'}`;
+                const cat = this.data.categories.find(c => c.id == doc.catId);
+                const [year, month] = doc.date.split('-');
+                const location = `${year} > ${months[parseInt(month) - 1]} > ${cat ? cat.name : 'General'}`;
 
-            return `
+                return `
                                 <tr style="border-bottom:1px solid #f1f5f9;">
                                     <td style="padding:1rem;"><span style="font-weight:800; color:var(--primary);">${doc.consecutive.toString().padStart(3, '0')}</span></td>
                                     <td style="font-size:0.75rem; color:var(--text-body);">${location}</td>
@@ -497,10 +549,13 @@ class DocuFlowApp {
                                     </td>
                                 </tr>
                             `;
-        }).join('')}
+            }).join('')}
                     </tbody>
                 </table>
             </div>`;
+        }
+
+        grid.innerHTML = html;
     }
 
     clearSearch() {
@@ -605,6 +660,12 @@ class DocuFlowApp {
         // Botón flotante "Add New"
         const fab = document.querySelector('.btn-fab[onclick*="upload-modal"]');
         if (fab) fab.style.display = isVisualizer ? 'none' : 'block';
+
+        // Botones de nuevos módulos
+        const btnFin = document.getElementById('btn-open-financial-modal');
+        const btnTP = document.getElementById('btn-open-thirdparty-modal');
+        if (btnFin) btnFin.style.display = isVisualizer ? 'none' : 'block';
+        if (btnTP) btnTP.style.display = isVisualizer ? 'none' : 'block';
 
         // Backup Section (Config)
         const backupSec = document.getElementById('backup-section');
@@ -1387,7 +1448,234 @@ class DocuFlowApp {
         }
     }
 
-    // Export Monthly Report from Reports Tab
+    // --- NEW MODULES: Financials & Third Parties ---
+
+    setupNewModulesHandlers() {
+        // Financials
+        const btnOpenFin = document.getElementById('btn-open-financial-modal');
+        const formFin = document.getElementById('financial-upload-form');
+
+        if (btnOpenFin) {
+            btnOpenFin.onclick = () => {
+                if (!this.checkPermission('Contador')) return;
+                document.getElementById('financial-modal').style.display = 'flex';
+            };
+        }
+
+        if (formFin) {
+            formFin.onsubmit = async (e) => {
+                e.preventDefault();
+                await this.saveFinancial();
+            };
+        }
+
+        // Third Parties
+        const btnOpenTP = document.getElementById('btn-open-thirdparty-modal');
+        const formTP = document.getElementById('thirdparty-form');
+
+        if (btnOpenTP) {
+            btnOpenTP.onclick = () => {
+                if (!this.checkPermission('Contador')) return;
+                document.getElementById('thirdparty-modal-title').textContent = 'Añadir Tercero';
+                document.getElementById('edit-thirdparty-id').value = '';
+                document.getElementById('tp-file-help').style.display = 'none';
+                formTP.reset();
+                document.getElementById('thirdparty-modal').style.display = 'flex';
+            };
+        }
+
+        if (formTP) {
+            formTP.onsubmit = async (e) => {
+                e.preventDefault();
+                await this.saveThirdParty();
+            };
+        }
+    }
+
+    async saveFinancial() {
+        const year = document.getElementById('fin-year').value;
+        const name = document.getElementById('fin-name').value;
+        const fileInp = document.getElementById('fin-file');
+
+        if (!year || !name || !fileInp.files[0]) return alert('Completa todos los campos');
+
+        const file = fileInp.files[0];
+        const reader = new FileReader();
+
+        reader.onload = (ev) => {
+            const newDoc = {
+                id: Date.now(),
+                year: year,
+                name: name,
+                uploadedBy: this.currentUser?.name || 'Sistema',
+                timestamp: new Date().toLocaleString(),
+                content: ev.target.result
+            };
+
+            this.data.financialDocuments.push(newDoc);
+            this.saveToLocalStorage();
+            this.renderFinancials();
+
+            this.addNotification(`Subió estado financiero: ${name} (${year})`, 'success', 'Contabilidad');
+            document.getElementById('financial-modal').style.display = 'none';
+            document.getElementById('financial-upload-form').reset();
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    renderFinancials() {
+        const body = document.getElementById('financials-table-body');
+        if (!body) return;
+
+        const docs = this.data.financialDocuments || [];
+        docs.sort((a, b) => b.year - a.year);
+
+        const isAdmin = this.currentUser?.role === 'Administrador';
+
+        body.innerHTML = docs.length > 0
+            ? docs.map(doc => `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:1rem;"><strong>${doc.year}</strong></td>
+                    <td>${doc.name}</td>
+                    <td style="font-size:0.8rem;">${doc.timestamp}</td>
+                    <td style="font-size:0.8rem;">${doc.uploadedBy}</td>
+                    <td>
+                        <button onclick="app.openFinancialPreview(${doc.id})" class="action-btn" title="Ver">👁️</button>
+                        ${isAdmin ? `<button onclick="app.deleteFinancial(${doc.id})" class="action-btn btn-danger" title="Eliminar">🗑️</button>` : ''}
+                    </td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="5" style="text-align:center; padding:2rem; opacity:0.5;">No hay estados financieros registrados</td></tr>';
+    }
+
+    openFinancialPreview(id) {
+        const doc = this.data.financialDocuments.find(d => d.id == id);
+        if (!doc) return;
+        document.getElementById('pdf-modal').style.display = 'flex';
+        document.getElementById('pdf-preview-frame').src = doc.content;
+    }
+
+    deleteFinancial(id) {
+        if (!this.checkPermission('Administrador')) return;
+        if (confirm('¿Seguro que deseas eliminar este estado financiero?')) {
+            const doc = this.data.financialDocuments.find(d => d.id == id);
+            this.data.financialDocuments = this.data.financialDocuments.filter(d => d.id != id);
+            this.saveToLocalStorage();
+            this.renderFinancials();
+            this.addNotification(`Eliminó estado financiero: ${doc?.name}`, 'error', 'Contabilidad');
+        }
+    }
+
+    async saveThirdParty() {
+        const id = document.getElementById('edit-thirdparty-id').value;
+        const nit = document.getElementById('tp-nit').value;
+        const name = document.getElementById('tp-name').value;
+        const type = document.getElementById('tp-type').value;
+        const fileInp = document.getElementById('tp-file');
+
+        let fileContent = null;
+        if (fileInp.files[0]) {
+            fileContent = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(fileInp.files[0]);
+            });
+        }
+
+        if (id) {
+            // Edit
+            const tp = this.thirdParties.find(t => t.id == id);
+            if (tp) {
+                tp.nit = nit;
+                tp.name = name;
+                tp.type = type;
+                if (fileContent) tp.content = fileContent;
+                this.addNotification(`Actualizó tercero: ${name}`, 'success', 'Terceros');
+            }
+        } else {
+            // New
+            if (!fileContent) return alert('Debes subir el RUT del tercero');
+            const newTP = {
+                id: Date.now(),
+                nit: nit,
+                name: name,
+                type: type,
+                content: fileContent,
+                uploadedBy: this.currentUser?.name || 'Sistema',
+                timestamp: new Date().toLocaleString()
+            };
+            this.thirdParties.push(newTP);
+            this.addNotification(`Añadió nuevo tercero: ${name}`, 'success', 'Terceros');
+        }
+
+        localStorage.setItem(this.THIRD_PARTIES_KEY, JSON.stringify(this.thirdParties));
+        this.renderThirdParties();
+        document.getElementById('thirdparty-modal').style.display = 'none';
+        document.getElementById('thirdparty-form').reset();
+    }
+
+    renderThirdParties() {
+        const body = document.getElementById('thirdparties-table-body');
+        if (!body) return;
+
+        const isAdmin = this.currentUser?.role === 'Administrador';
+
+        body.innerHTML = this.thirdParties.length > 0
+            ? this.thirdParties.map(tp => `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:1rem;"><strong>${tp.nit}</strong></td>
+                    <td>${tp.name}</td>
+                    <td><span class="badge-role" style="background:#eef2ff; color:#4f46e5;">${tp.type}</span></td>
+                    <td>
+                        <button onclick="app.openThirdPartyPreview(${tp.id})" class="action-btn" title="Ver RUT">📄 Ver RUT</button>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button onclick="app.openEditThirdPartyModal(${tp.id})" class="action-btn" title="Editar">✏️</button>
+                            ${isAdmin ? `<button onclick="app.deleteThirdParty(${tp.id})" class="action-btn btn-danger" title="Eliminar">🗑️</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="5" style="text-align:center; padding:2rem; opacity:0.5;">No hay terceros registrados</td></tr>';
+    }
+
+    openThirdPartyPreview(id) {
+        const tp = this.thirdParties.find(t => t.id == id);
+        if (!tp) return;
+        document.getElementById('pdf-modal').style.display = 'flex';
+        document.getElementById('pdf-preview-frame').src = tp.content;
+    }
+
+    openEditThirdPartyModal(id) {
+        if (!this.checkPermission('Contador')) return;
+        const tp = this.thirdParties.find(t => t.id == id);
+        if (!tp) return;
+
+        document.getElementById('thirdparty-modal-title').textContent = 'Editar Tercero';
+        document.getElementById('edit-thirdparty-id').value = tp.id;
+        document.getElementById('tp-nit').value = tp.nit;
+        document.getElementById('tp-name').value = tp.name;
+        document.getElementById('tp-type').value = tp.type;
+        document.getElementById('tp-file-help').style.display = 'block';
+
+        document.getElementById('thirdparty-modal').style.display = 'flex';
+    }
+
+    deleteThirdParty(id) {
+        if (!this.checkPermission('Administrador')) return;
+        if (confirm('¿Seguro que deseas eliminar este tercero de la base de datos?')) {
+            const tp = this.thirdParties.find(t => t.id == id);
+            this.thirdParties = this.thirdParties.filter(t => t.id != id);
+            localStorage.setItem(this.THIRD_PARTIES_KEY, JSON.stringify(this.thirdParties));
+            this.renderThirdParties();
+            this.addNotification(`Eliminó tercero: ${tp?.name}`, 'error', 'Terceros');
+        }
+    }
+
+    // --- EXISTING METHODS ---
+
     exportMonthlyReport() {
         if (typeof XLSX === 'undefined') {
             return this.showToast('Error: Librería Excel no cargada. Verifica tu conexión a internet.', 'error');

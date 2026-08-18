@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fundaec Digital Contable | Sistema de Gestión Documental</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>IROMSAVE | Gestor de Archivos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -14,12 +14,8 @@
     <!-- Login Screen -->
     <div id="login-screen" class="login-overlay">
         <div class="login-card">
-            <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 3rem;">
-                <img src="logo.jpg" alt="Fundaec Digital" style="width: 40px; border-radius: 8px;">
-                <div style="text-align: left; margin-left: 10px;">
-                    <div style="font-size: 1rem; font-weight: 700; color: #1e293b;">FUNDAC DIGITAL</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">Contable</div>
-                </div>
+            <div class="login-brand-wrapper" style="display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
+                <img src="logo.jpg" alt="IROMSAVE - Gestor de Archivos" style="max-width: 270px; width: 100%; height: auto; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.06));">
             </div>
 
             <h2>Iniciar Sesión</h2>
@@ -31,17 +27,16 @@
                         <input type="text" id="username" placeholder="Usuario" required>
                     </div>
                     <div class="login-input-group">
-                        <span class="icon">👤</span>
-                        <input type="password" id="password" placeholder="Contarsenaaa" required>
-                        <span class="lock-icon">🔒</span>
+                        <span class="icon">🔒</span>
+                        <input type="password" id="password" placeholder="Contraseña" required>
                     </div>
                     <button type="submit" class="btn-login">Entrar</button>
                     <div id="login-error">Usuario o contraseña incorrectos</div>
                 </form>
 
                 <div class="login-links">
-                    <a href="#" class="forgot-password">¿Olvidó su porsnneers?</a>
-                    <a href="#" class="create-account">Crear counta</a>
+                    <a href="#" class="forgot-password">¿Olvidó su contraseña?</a>
+                    <a href="#" class="create-account">Crear cuenta</a>
                 </div>
             </div>
         </div>
@@ -51,34 +46,9 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-                <div class="logo-frame">
-                    <svg viewBox="0 0 100 100" class="logo-svg-tech" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="tech-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#affc41;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#00e5ff;stop-opacity:1" />
-                            </linearGradient>
-                        </defs>
-                        <!-- Cloud Outer Shadow/Base -->
-                        <path d="M25,65 Q15,65 15,55 Q15,42 28,40 Q30,22 50,22 Q70,22 72,40 Q85,42 85,55 Q85,65 75,65 Z"
-                            fill="url(#tech-grad)" opacity="0.15" />
-                        <!-- Cloud Outline -->
-                        <path d="M25,65 Q15,65 15,55 Q15,42 28,40 Q30,22 50,22 Q70,22 72,40 Q85,42 85,55 Q85,65 75,65 Z"
-                            fill="none" stroke="url(#tech-grad)" stroke-width="2" />
-
-                        <!-- Gear -->
-                        <g transform="translate(50, 48) scale(0.6)">
-                            <path
-                                d="M10,-30 L-10,-30 L-13,-20 A22,22 0 0,0 -20,-13 L-30,-10 L-30,10 L-20,13 A22,22 0 0,0 -13,20 L-10,30 L10,30 L13,20 A22,22 0 0,0 20,13 L30,10 L30,-10 L20,-13 A22,22 0 0,0 13,-20 Z"
-                                fill="url(#tech-grad)" />
-                            <circle cx="0" cy="0" r="12" fill="#1c1d2d" />
-                            <!-- Leaf detail -->
-                            <path d="M0,-8 C5,-8 8,-3 8,2 C8,7 0,10 0,10 C0,10 -8,7 -8,2 C-8,-3 -5,-8 0,-8 Z"
-                                fill="url(#tech-grad)" />
-                        </g>
-                    </svg>
+                <div class="sidebar-brand-card">
+                    <img src="logo.jpg" alt="IROMSAVE - Gestor de Archivos" class="sidebar-logo-img">
                 </div>
-                <div class="logo-text">Fundaec Digital</div>
             </div>
 
             <div class="nav-section">
@@ -95,6 +65,7 @@
                 <span class="nav-label">Configuración</span>
                 <div class="nav-item" data-view="config">⚙️ Estructura</div>
                 <div class="nav-item" data-view="users">👥 Usuarios</div>
+                <div class="nav-item" data-view="trash">🗑️ Papelera</div>
                 <div class="nav-item" id="btn-logout"
                     style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">🔓
                     Cerrar Sesión</div>
@@ -180,7 +151,8 @@
                     <table style="width:100%; border-collapse: collapse; text-align: left;">
                         <thead style="background:#f8fafc; border-bottom:2px solid #eee;">
                             <tr>
-                                <th style="padding:1rem;">Año</th>
+                                <th style="padding:1rem;">N°</th>
+                                <th>Año</th>
                                 <th>Nombre del Documento</th>
                                 <th>Fecha Subida</th>
                                 <th>Usuario</th>
@@ -244,7 +216,7 @@
                             <div>
                                 <h3 style="color: var(--primary);">📦 Backup y Restauración Local</h3>
                                 <p style="font-size: 0.85rem; color: var(--text-body); margin-top: 0.5rem;">Resguarda
-                                    toda la base de datos de FUNDAEC en un archivo seguro.</p>
+                                    toda la base de datos de IROMSAVE en un archivo seguro.</p>
                             </div>
                             <div style="display: flex; gap: 1rem;">
                                 <button class="btn-fab" id="btn-download-backup"
@@ -294,6 +266,27 @@
                 </div>
                 <div id="search-results-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
                     <!-- Resultados dinámicos aquí -->
+                </div>
+            </div>
+
+            <!-- Trash View -->
+            <div id="view-trash" class="view-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 class="section-title" style="margin:0;">Papelera de Reciclaje (15 días)</h2>
+                </div>
+                <div class="storage-box">
+                    <table style="width:100%; border-collapse: collapse; text-align: left;">
+                        <thead style="background:#f8fafc; border-bottom:2px solid #eee;">
+                            <tr>
+                                <th style="padding:1rem;">Nombre del Documento</th>
+                                <th>Tipo de Registro</th>
+                                <th>Fecha Eliminación</th>
+                                <th>Días Restantes</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trash-table-body"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -372,6 +365,9 @@
                 <div style="margin-bottom: 1rem;">
                     <label>Consecutivo</label>
                     <input type="number" id="meta-consecutive" style="width:100%; padding:0.5rem;" required>
+                    <small id="consecutive-error"
+                        style="color: var(--danger); display: none; font-weight: 600; margin-top: 0.25rem;">Consecutivo
+                        ya en uso</small>
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label>Tipo</label>
@@ -482,6 +478,14 @@
                         placeholder="Ej: 2025">
                 </div>
                 <div style="margin-bottom: 1rem;">
+                    <label>N° Consecutivo</label>
+                    <input type="number" id="fin-consecutive" style="width:100%; padding:0.5rem;" required
+                        placeholder="Ej: 001">
+                    <small id="fin-consecutive-error"
+                        style="color: var(--danger); display: none; font-weight: 600; margin-top: 0.25rem;">Consecutivo
+                        ya en uso</small>
+                </div>
+                <div style="margin-bottom: 1rem;">
                     <label>Nombre del Documento</label>
                     <input type="text" id="fin-name" style="width:100%; padding:0.5rem;" required
                         placeholder="Ej: Estado de Situación Financiera">
@@ -508,6 +512,9 @@
                 <div style="margin-bottom: 1rem;">
                     <label>NIT / Cédula</label>
                     <input type="text" id="tp-nit" style="width:100%; padding:0.5rem;" required>
+                    <small id="tp-nit-error"
+                        style="color: var(--danger); display: none; font-weight: 600; margin-top: 0.25rem;">NIT ya
+                        registrado</small>
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label>Nombre / Razón Social</label>
@@ -546,6 +553,9 @@
                     <label>Número de Consecutivo (Ej: 001, 2026-01)</label>
                     <input type="text" id="move-consecutive" style="width:100%; padding:0.5rem;" placeholder="Ej: 001"
                         required>
+                    <small id="move-consecutive-error"
+                        style="color: var(--danger); display: none; font-weight: 600; margin-top: 0.25rem;">Consecutivo
+                        ya en uso en destino</small>
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label>Nuevo Año (Ej: 2026)</label>

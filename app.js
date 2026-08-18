@@ -2,12 +2,12 @@ class DocuFlowApp {
     constructor() {
         // Cambiamos la clave para RESETEAR y corregir errores de versiones previas
         this.STORAGE_KEY = 'docuflow_v3_stable';
-        this.THIRD_PARTIES_KEY = 'fundaec_terceros';
+        this.THIRD_PARTIES_KEY = 'iromsave_terceros';
         this.explorerState = { year: null, month: null, filterCatId: null };
         this.currentMoveDocId = null;
 
-        // Recuperar terceros desde su propia clave de localStorage
-        const savedTP = localStorage.getItem(this.THIRD_PARTIES_KEY);
+        // Recuperar terceros desde su propia clave de localStorage (compatible con versión previa)
+        const savedTP = localStorage.getItem(this.THIRD_PARTIES_KEY) || localStorage.getItem('fundaec_terceros');
         this.thirdParties = savedTP ? JSON.parse(savedTP) : [];
 
         // Recuperar sesión desde sessionStorage (Seguridad de Sesión)
@@ -232,6 +232,24 @@ class DocuFlowApp {
             };
         }
 
+        // Listener para validación en tiempo real (Explorer Upload)
+        if (inpCons) {
+            inpCons.oninput = () => {
+                const catId = selCat.value;
+                const errSpan = document.getElementById('consecutive-error');
+                if (!catId) return;
+                const dup = this.checkConsecutive(inpCons.value, 'documents', catId);
+                if (dup) {
+                    inpCons.style.borderColor = 'var(--danger)';
+                    errSpan.style.display = 'block';
+                    errSpan.textContent = `⚠️ Usado: ${dup.name}`;
+                } else {
+                    inpCons.style.borderColor = 'var(--border)';
+                    errSpan.style.display = 'none';
+                }
+            };
+        }
+
         const dropzone = document.getElementById('dropzone');
         if (dropzone && fileInp) {
             dropzone.onclick = () => fileInp.click();
@@ -262,6 +280,15 @@ class DocuFlowApp {
                 const cons = parseInt(inpCons.value);
                 const baseName = document.getElementById('meta-name').value;
                 const date = document.getElementById('meta-date').value;
+
+                // Validación CRÍTICA de integridad (Duplicados)
+                const isDup = this.checkConsecutive(cons, 'documents', catId);
+                if (isDup) {
+                    if (loader) loader.style.display = 'none';
+                    const [y, m] = date.split('-');
+                    this.addNotification(`Usuario ${this.currentUser?.name} intentó duplicar el consecutivo #${cons} en la carpeta ${m}/${y}`, 'warning', 'Seguridad');
+                    return alert(`Error: El consecutivo #${cons} ya está en uso en la carpeta seleccionada. El próximo disponible es ${cat.nextConsecutive}.`);
+                }
 
                 // Validación de Consecutivo (Saltos)
                 if (cons > cat.nextConsecutive) {
@@ -613,7 +640,7 @@ class DocuFlowApp {
 
         if (btnLogout) {
             btnLogout.onclick = () => {
-                if (confirm('¿Cerrar sesión en Fundaec Digital?')) {
+                if (confirm('¿Cerrar sesión en IROMSAVE?')) {
                     this.currentUser = null;
                     sessionStorage.removeItem('docuflow_session');
                     mainApp.style.display = 'none';
@@ -1091,7 +1118,7 @@ class DocuFlowApp {
     exportBackup() {
         const now = new Date();
         const dateStr = `${now.getDate()}-${now.getMonth() + 1}-${now.getFullYear()}`;
-        const fileName = `Backup_Fundaec_${dateStr}.json`;
+        const fileName = `Backup_IROMSAVE_${dateStr}.json`;
 
         // Crear JSON
         const dataStr = JSON.stringify(this.data, null, 4);
@@ -1125,7 +1152,7 @@ class DocuFlowApp {
                 const isValid = keys.every(k => Array.isArray(importedData[k]));
 
                 if (!isValid) {
-                    return this.showToast('Error: El archivo no tiene el formato válido de FUNDAEC.', 'error');
+                    return this.showToast('Error: El archivo no tiene el formato válido de IROMSAVE.', 'error');
                 }
 
                 // Aplicar Cambios
@@ -1159,7 +1186,7 @@ class DocuFlowApp {
         const link = document.createElement("a");
 
         link.setAttribute("href", url);
-        link.setAttribute("download", `auditoria_docuflow_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute("download", `auditoria_iromsave_${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -1331,8 +1358,21 @@ class DocuFlowApp {
                     consecutive: newConsecutive,
                     timestamp: new Date().toLocaleString()
                 };
+
+                // Validación final antes de copiar
+                if (this.checkConsecutive(newConsecutive, 'documents', parseInt(newCatId))) {
+                    if (loader) loader.style.display = 'none';
+                    return alert('Error de Integridad: El consecutivo ya existe en el destino.');
+                }
+
                 this.data.documents.push(newCopy);
             } else {
+                // Validación final antes de mover
+                if (this.checkConsecutive(newConsecutive, 'documents', parseInt(newCatId), doc.id)) {
+                    if (loader) loader.style.display = 'none';
+                    return alert('Error de Integridad: El consecutivo ya existe en el destino.');
+                }
+
                 // Registro detallado para auditoría antes de mover
                 const oldLoc = `Cat ID ${doc.catId} - ${doc.date}`;
                 doc.date = newDate;
@@ -1433,7 +1473,7 @@ class DocuFlowApp {
             XLSX.utils.book_append_sheet(wb, ws, "Documentos");
 
             // Nombre del archivo sanitizado
-            const fileName = `Reporte_Fundaec_${catName}_${monthName}_${year}.xlsx`
+            const fileName = `Reporte_IROMSAVE_${catName}_${monthName}_${year}.xlsx`
                 .replace(/[/\\?%*:|"<>]/g, '-')
                 .replace(/\s+/g, '_');
 
@@ -1447,6 +1487,18 @@ class DocuFlowApp {
             this.showToast('Error inesperado al generar el archivo. Intenta de nuevo.', 'error');
         }
     }
+    checkConsecutive(val, collection = 'documents', catId = null, excludeId = null) {
+        if (!val) return null;
+        const cons = parseInt(val);
+        if (collection === 'documents') {
+            // Unicidad por CATEGORÍA
+            return this.data.documents.find(d => d.consecutive == cons && d.catId == catId && d.id != excludeId);
+        } else if (collection === 'financials') {
+            // Unicidad GLOBAL en financieros
+            return this.data.financialDocuments.find(d => d.consecutive == cons && d.id != excludeId);
+        }
+        return null;
+    }
 
     // --- NEW MODULES: Financials & Third Parties ---
 
@@ -1454,11 +1506,32 @@ class DocuFlowApp {
         // Financials
         const btnOpenFin = document.getElementById('btn-open-financial-modal');
         const formFin = document.getElementById('financial-upload-form');
+        const finConsInp = document.getElementById('fin-consecutive');
+        const finConsErr = document.getElementById('fin-consecutive-error');
 
         if (btnOpenFin) {
             btnOpenFin.onclick = () => {
                 if (!this.checkPermission('Contador')) return;
+                formFin.reset();
+                if (finConsInp) {
+                    finConsInp.style.borderColor = 'var(--border)';
+                    finConsErr.style.display = 'none';
+                }
                 document.getElementById('financial-modal').style.display = 'flex';
+            };
+        }
+
+        if (finConsInp) {
+            finConsInp.oninput = () => {
+                const dup = this.checkConsecutive(finConsInp.value, 'financials');
+                if (dup) {
+                    finConsInp.style.borderColor = 'var(--danger)';
+                    finConsErr.style.display = 'block';
+                    finConsErr.textContent = `⚠️ Ya usado: ${dup.name} (${dup.year})`;
+                } else {
+                    finConsInp.style.borderColor = 'var(--border)';
+                    finConsErr.style.display = 'none';
+                }
             };
         }
 
@@ -1479,6 +1552,16 @@ class DocuFlowApp {
                 document.getElementById('thirdparty-modal-title').textContent = 'Añadir Tercero';
                 document.getElementById('edit-thirdparty-id').value = '';
                 document.getElementById('tp-file-help').style.display = 'none';
+
+                // Reset validación previa
+                const nitInp = document.getElementById('tp-nit');
+                const nitErr = document.getElementById('tp-nit-error');
+                if (nitInp) {
+                    nitInp.style.borderColor = 'var(--border)';
+                    nitInp.style.backgroundColor = 'white';
+                }
+                if (nitErr) nitErr.style.display = 'none';
+
                 formTP.reset();
                 document.getElementById('thirdparty-modal').style.display = 'flex';
             };
@@ -1490,14 +1573,48 @@ class DocuFlowApp {
                 await this.saveThirdParty();
             };
         }
+
+        // Validación de NIT en tiempo real
+        const nitInp = document.getElementById('tp-nit');
+        const nitErr = document.getElementById('tp-nit-error');
+        if (nitInp) {
+            nitInp.oninput = () => {
+                const id = document.getElementById('edit-thirdparty-id').value;
+                const cleanVal = this.cleanNIT(nitInp.value);
+                const duplicate = this.thirdParties.find(tp => this.cleanNIT(tp.nit) === cleanVal && tp.id != id);
+
+                if (duplicate && cleanVal.length > 0) {
+                    nitInp.style.borderColor = 'var(--danger)';
+                    nitInp.style.backgroundColor = '#fff1f2';
+                    nitErr.style.display = 'block';
+                    nitErr.textContent = `⚠️ Ya registrado: ${duplicate.name}`;
+                } else {
+                    nitInp.style.borderColor = 'var(--border)';
+                    nitInp.style.backgroundColor = 'white';
+                    nitErr.style.display = 'none';
+                }
+            };
+        }
+    }
+
+    cleanNIT(val) {
+        return val.toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     }
 
     async saveFinancial() {
         const year = document.getElementById('fin-year').value;
+        const consecutive = document.getElementById('fin-consecutive').value;
         const name = document.getElementById('fin-name').value;
         const fileInp = document.getElementById('fin-file');
 
-        if (!year || !name || !fileInp.files[0]) return alert('Completa todos los campos');
+        if (!year || !consecutive || !name || !fileInp.files[0]) return alert('Completa todos los campos');
+
+        // Validación final de integridad
+        const dup = this.checkConsecutive(consecutive, 'financials');
+        if (dup) {
+            this.addNotification(`Intento fallido de duplicar consecutivo #${consecutive} en Financieros`, 'warning', 'Seguridad');
+            return alert(`Error: El consecutivo [${consecutive}] ya está en uso por "${dup.name}".`);
+        }
 
         const file = fileInp.files[0];
         const reader = new FileReader();
@@ -1506,6 +1623,7 @@ class DocuFlowApp {
             const newDoc = {
                 id: Date.now(),
                 year: year,
+                consecutive: parseInt(consecutive),
                 name: name,
                 uploadedBy: this.currentUser?.name || 'Sistema',
                 timestamp: new Date().toLocaleString(),
@@ -1516,7 +1634,7 @@ class DocuFlowApp {
             this.saveToLocalStorage();
             this.renderFinancials();
 
-            this.addNotification(`Subió estado financiero: ${name} (${year})`, 'success', 'Contabilidad');
+            this.addNotification(`Subió estado financiero: ${name} (Ref #${consecutive})`, 'success', 'Contabilidad');
             document.getElementById('financial-modal').style.display = 'none';
             document.getElementById('financial-upload-form').reset();
         };
@@ -1529,14 +1647,15 @@ class DocuFlowApp {
         if (!body) return;
 
         const docs = this.data.financialDocuments || [];
-        docs.sort((a, b) => b.year - a.year);
+        docs.sort((a, b) => b.year - a.year || b.consecutive - a.consecutive);
 
         const isAdmin = this.currentUser?.role === 'Administrador';
 
         body.innerHTML = docs.length > 0
             ? docs.map(doc => `
                 <tr style="border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:1rem;"><strong>${doc.year}</strong></td>
+                    <td style="padding:1rem;"><strong>#${doc.consecutive}</strong></td>
+                    <td>${doc.year}</td>
                     <td>${doc.name}</td>
                     <td style="font-size:0.8rem;">${doc.timestamp}</td>
                     <td style="font-size:0.8rem;">${doc.uploadedBy}</td>
@@ -1546,7 +1665,7 @@ class DocuFlowApp {
                     </td>
                 </tr>
             `).join('')
-            : '<tr><td colspan="5" style="text-align:center; padding:2rem; opacity:0.5;">No hay estados financieros registrados</td></tr>';
+            : '<tr><td colspan="6" style="text-align:center; padding:2rem; opacity:0.5;">No hay estados financieros registrados</td></tr>';
     }
 
     openFinancialPreview(id) {
@@ -1587,6 +1706,14 @@ class DocuFlowApp {
             // Edit
             const tp = this.thirdParties.find(t => t.id == id);
             if (tp) {
+                // Doble chequeo de seguridad antes de guardar
+                const cleanNew = this.cleanNIT(nit);
+                const isDup = this.thirdParties.find(t => this.cleanNIT(t.nit) === cleanNew && t.id != id);
+                if (isDup) {
+                    this.addNotification(`Intento fallido de actualización: NIT duplicado detectado para ${name}`, 'warning', 'Terceros');
+                    return alert(`Error: El NIT [${nit}] ya se encuentra registrado con el nombre [${isDup.name}].`);
+                }
+
                 tp.nit = nit;
                 tp.name = name;
                 tp.type = type;
@@ -1595,6 +1722,13 @@ class DocuFlowApp {
             }
         } else {
             // New
+            const cleanNew = this.cleanNIT(nit);
+            const isDup = this.thirdParties.find(t => this.cleanNIT(t.nit) === cleanNew);
+            if (isDup) {
+                this.addNotification(`Intento fallido de registro: NIT duplicado detectado para ${name}`, 'warning', 'Terceros');
+                return alert(`Error: El NIT [${nit}] ya se encuentra registrado con el nombre [${isDup.name}].`);
+            }
+
             if (!fileContent) return alert('Debes subir el RUT del tercero');
             const newTP = {
                 id: Date.now(),
@@ -1660,6 +1794,15 @@ class DocuFlowApp {
         document.getElementById('tp-type').value = tp.type;
         document.getElementById('tp-file-help').style.display = 'block';
 
+        // Reset validación previa
+        const nitInp = document.getElementById('tp-nit');
+        const nitErr = document.getElementById('tp-nit-error');
+        if (nitInp) {
+            nitInp.style.borderColor = 'var(--border)';
+            nitInp.style.backgroundColor = 'white';
+        }
+        if (nitErr) nitErr.style.display = 'none';
+
         document.getElementById('thirdparty-modal').style.display = 'flex';
     }
 
@@ -1714,7 +1857,7 @@ class DocuFlowApp {
             ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 40 }, { wch: 25 }, { wch: 20 }];
 
             XLSX.utils.book_append_sheet(wb, ws, "Reporte Mensual");
-            XLSX.writeFile(wb, `Reporte_Mensual_Fundaec_${dateVal}.xlsx`);
+            XLSX.writeFile(wb, `Reporte_Mensual_IROMSAVE_${dateVal}.xlsx`);
 
             this.addNotification(`Generó reporte mensual consolidado de: ${dateVal}`, 'success', 'Reporte');
         } catch (error) {
